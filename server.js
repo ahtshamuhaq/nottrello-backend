@@ -27,8 +27,16 @@ const io = require("socket.io")(server, {
     credentials: true,
   },
 });
+
 io.on("connection", (socket) => {
   console.log("User connected");
+  socket.on("cardMovedToDone", (data) => {
+    console.log(`${data.email} moved a card to Done.`);
+    // Here, you notify the admin
+    socket.broadcast.emit("adminNotification", {
+      message: `${data.email} moved a card to Done.`,
+    });
+  });
   socket.on("disconnect", () => {
     console.log("User disconnected");
   });
