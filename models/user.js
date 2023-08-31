@@ -4,13 +4,13 @@ const itemSchema = new mongoose.Schema({
   id: Number,
   text: String,
   type: String,
-  priority: { type: String, default: "medium" }, // added priority with a default value
-  reminder: { type: String, default: "" }, // added reminder with a default value
+  priority: { type: String, default: "medium" },
+  reminder: { type: String, default: "" },
 });
 
 const userSchema = new mongoose.Schema({
   userID: String,
-  email: { type: String, unique: true, required: true }, // Add this to ensure email is unique
+  email: { type: String, unique: true, required: true },
   name: String,
   cards: [[itemSchema]],
 });

@@ -45,13 +45,12 @@ router.get("/dashboard/email/:email", async (req, res) => {
   }
 });
 router.put("/dashboard/email/:email/card/:cardId", async (req, res) => {
-  console.log("Received PUT request to update card:", req.params.cardId); // New log
+  console.log("Received PUT request to update card:", req.params.cardId);
 
   try {
     const { email, cardId } = req.params;
     const { newText, newPriority, newReminder } = req.body;
 
-    // Logging received data
     console.log("Received Data:", { newText, newPriority, newReminder });
 
     const user = await User.findOne({ email });
@@ -71,17 +70,16 @@ router.put("/dashboard/email/:email/card/:cardId", async (req, res) => {
       return res.status(404).send({ error: "Item not found within card." });
     }
 
-    // Update fields only if they are provided in request body
     if (newText) itemToUpdate.text = newText;
     if (newPriority) itemToUpdate.priority = newPriority;
     if (newReminder) itemToUpdate.reminder = newReminder;
 
     await user.save();
 
-    console.log("Card updated successfully!"); // New log
+    console.log("Card updated successfully!");
     res.status(200).send(user);
   } catch (error) {
-    console.error("Error updating card:", error); // Improved error log
+    console.error("Error updating card:", error);
     res.status(500).send({ error: "Internal Server Error." });
   }
 });
