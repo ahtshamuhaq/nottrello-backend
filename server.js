@@ -3,43 +3,16 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const admin = require("firebase-admin");
-const http = require("http");
-const socketIo = require("socket.io");
 const serviceAccount = require("./config/emailpasswordlogin-d7540-firebase-adminsdk-tlcpl-32ec837ca7.json");
 const User = require("./models/user");
+const Ably = require("ably");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-require("dotenv").config();
-const cors = require("cors");
-
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-const server = http.createServer(app);
-const io = require("socket.io")(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["my-custom-header"],
-    credentials: true,
-  },
+const realtime = new Ably.Realtime({
+  key: "vrXrCA.OqwQXw:KQOb4-ZvefpMcDN-vfk1-meGK30RdJhkQGCsr1sjCmU",
 });
 
-io.on("connection", (socket) => {
-  console.log("User connected");
-  socket.on("cardMovedToDone", (data) => {
-    console.log(`${data.email} moved a card to Done.`);
-    socket.broadcast.emit("adminNotification", {
-      message: `${data.email} moved a card to Done.`,
-    });
-  });
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-});
+const reminderChannel = realtime.channels.get("reminder");
+
 setInterval(async () => {
   try {
     const users = await User.find({});
@@ -47,7 +20,9 @@ setInterval(async () => {
       for (const card of user.cards) {
         for (const item of card) {
           if (item.reminder && new Date(item.reminder) <= new Date()) {
-            io.emit("reminder", { message: "It's time for a reminder!" });
+            reminderChannel.publish("notify", {
+              message: "It's time for a reminder!",
+            });
             item.reminder = "";
           }
         }
@@ -58,6 +33,24 @@ setInterval(async () => {
     console.error("Error checking reminders:", error);
   }
 }, 60 * 1000);
+
+reminderChannel.subscribe("cardMovedToDone", (message) => {
+  reminderChannel.publish("notify", {
+    message: "Card moved to done!",
+  });
+});
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+require("dotenv").config();
+const cors = require("cors");
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 mongoose
   .connect(process.env.MONGODB_URI, {
@@ -70,12 +63,14 @@ mongoose
   .catch((error) => {
     console.error("Connection error", error);
   });
+
 app.get("/", (req, res) => {
   res.json({ message: "Backend server is running!" });
 });
+
 app.use("/user", userRoutes);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
